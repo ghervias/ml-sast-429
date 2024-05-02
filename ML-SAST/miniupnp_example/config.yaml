@@ -1,0 +1,79 @@
+---
+general:
+  project: "miniupnp"  
+  source: ./code  
+  loglevel: DEBUG  
+
+svf:
+  graphs:
+    - tldg
+    - icfg
+    - svfg
+    - ptacg
+  options:
+    versioning_threads: 7
+    precise_analysis: true
+  binary: entrypoint
+  delete: true
+
+neo4j:
+  host: localhost
+  port: 7687
+  user: neo4j
+  pass: ml-sast
+  delete: true
+  memory:
+    dbms.memory.heap.initial_size: 5100m
+    dbms.memory.heap.max_size: 5100m
+    dbms.memory.pagecache.size: 2900m
+    dbms.memory.off_heap.max_size: 4000m
+  prepare: |
+           // INIT DATABASE
+           CALL mlsast.prepare.generateLabels();
+           CALL mlsast.prepare.generateIndeces();
+           CALL mlsast.prepare.connectGraphs();
+           CALL mlsast.prepare.makeRelationships();
+           CALL mlsast.prepare.setIcfgProps();
+           CALL mlsast.prepare.buildIcfgPhis();
+  query: |
+         // Get list of procedures in program.
+         CALL mlsast.util.listProcedures()
+         YIELD str AS f
+  
+         // Find call sites for procedures.
+         WITH f
+         MATCH (n:FunEntryICFGNode {func_name: f})
+  
+         // Find exit nodes for same procedures.
+         WITH f, n
+         MATCH (m:FunExitICFGNode {func_name: f})
+  
+         // Find unique paths between call sites and exit points.
+         WITH f, n, collect(m) AS exits
+           CALL apoc.path.expandConfig(n, {
+               relationshipFilter: "icfg>",
+               terminatorNodes: exits,
+               uniqueness: "NODE_LEVEL",
+               maxLevel: 75
+           })
+  
+           YIELD path
+  
+         // Return name of the procedure (f) and the
+         // associated paths (path).
+         RETURN f, path;
+
+distance:
+  model_path: models/juliet.zip  
+  node_property: node_type  
+  threshold_factor: 1  
+  centroids: bad  
+  clustering_type: kmeans  
+  expected_clusters: 8  
+  threshold_scaling: 1  
+  include_models: all  
+    - CWE-122
+    - CWE-690
+  exclude_models:  
+    - CWE-606
+  source_code_delta: 4  
