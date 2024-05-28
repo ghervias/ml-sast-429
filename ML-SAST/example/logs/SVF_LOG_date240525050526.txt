@@ -1,0 +1,390 @@
+Copying build.sh to /project/code
+Building program source code.
+Extracting bitcode from juliet-example
+Begin with graph generation.
+Using command: svf-mlsast -versioning-threads=7 -precise-analysis -build-icfg -build-ptacg /root/juliet-example.bc >> /project/logs/SVF_LOG_date240525050526.txt 2>&1
+Begin Points-To analysis... 
+*********CallGraph Stats***************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+TotalNode           130
+TotalEdge           264
+TotalCycle          0
+MaxNodeInCycle      0
+NodeInCycle         0
+CalRetPairInCycle   0
+#######################################################
+
+*********General Stats***************
+################ (program : juliet-example.bc)###############
+BBWith2Succ         106
+BBWith3Succ         6
+TotalPointers       2332
+TotalObjects        300
+TotalFieldObjects   17
+MaxStructSize       9
+TotalSVFStmts       1720
+TotalPTASVFStmts    843
+FIObjNum            7
+FSObjNum            292
+AddrsNum            370
+LoadsNum            334
+StoresNum           232
+CopysNum            80
+GepsNum             152
+CallsNum            61
+ReturnsNum          20
+FunctionObjs        130
+GlobalObjs          14
+HeapObjs            27
+StackObjs           127
+VarStructObj        5
+VarArrayObj         2
+ConstStructObj      0
+ConstArrayObj       0
+NonPtrObj           216
+ConstantObj         0
+IndCallSites        1
+TotalCallSite       264
+-------------------------------------------------------
+LLVMIRTime          0.006
+SymbolTableTime     0.004
+SVFIRTime           0.006
+#######################################################
+
+*********Constraint Graph Stats***************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+AvgIn/OutCopyEdge   0.483026
+AvgIn/OutLoadEdge   0.158099
+AvgIn/OutAddrEdge   0.330747
+AvgIn/OutEdge       1.06111
+LocalVarInRecur     0
+NumOfCGNode         2788
+TotalValidNode      1031
+TotalValidObjNode   303
+NumOfCGEdge         753
+NumOfAddrs          341
+NumOfCopys          346
+NumOfGeps           152
+NumOfLoads          163
+NumOfStores         92
+MaxInCopyEdge       37
+MaxOutCopyEdge      18
+MaxInLoadEdge       1
+MaxOutLoadEdge      7
+MaxInStoreEdge      3
+MaxOutStoreEdge     19
+AvgIn/OutStoreEdge  0
+MaxInAddrEdge       1
+MaxOutAddrEdge      43
+#######################################################
+
+*********Andersen Pointer Analysis Stats***************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+TotalTime           0.004
+UpdateCGTime        0
+AvgTopLvlPtsSize    0.947887
+SCCDetectTime       0
+SCCMergeTime        0
+LoadStoreTime       0
+CopyGepTime         0
+AvgPtsSetSize       0.260043
+CollapseTime        0
+TotalPointers       2332
+Pointers            2329
+TotalObjects        317
+IndCallSites        1
+MemObjects          300
+DummyFieldPtrs      3
+FieldObjs           17
+SolveIterations     3
+IndEdgeSolved       0
+NullPointer         3
+PointsToConstPtr    5
+PointsToBlkPtr      0
+AddrProcessed       341
+CopyProcessed       271
+GepProcessed        134
+LoadProcessed       163
+StoreProcessed      88
+NumOfSFRs           0
+NumOfFieldExpand    0
+MaxPtsSetSize       3
+NumOfSCCDetect      3
+TotalCycleNum       0
+TotalPWCCycleNum    0
+NodesInCycles       0
+MaxNodesInSCC       0
+#######################################################
+
+****Persistent Points-To Cache Statistics: Andersen's analysis bitvector****
+################ (program : juliet-example.bc)###############
+UniquePointsToSets       324
+TotalUnions              759
+PropertyUnions           740
+UniqueUnions             6
+LookupUnions             2
+PreemptiveUnions         11
+TotalComplements         8334
+PropertyComplements      8332
+UniqueComplements        1
+LookupComplements        0
+PreemptiveComplements    1
+TotalIntersections       254
+PropertyIntersections    252
+UniqueIntersections      0
+LookupIntersections      0
+PreemptiveIntersections  2
+#######################################################
+
+*********Memory SSA Statistics***************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+AverageRegSize      1
+SSARenameTime       0
+InsertPHITime       0
+GenMUCHITime        0.001
+GenRegionTime       0.003
+TotalMSSATime       0.005
+BBHasMSSAPhi        25
+MSSAPhi             41
+StoreHasChi         91
+LoadHasMu           163
+CSHasMu             32
+CSHasChi            25
+FunHasRetMu         98
+FunHasEntryChi      50
+StoreChiNode        87
+LoadMuNode          163
+CSMuNode            33
+CSChiNode           25
+FunRetMu            102
+FunEntryChi         106
+MemRegions          98
+MaxRegSize          1
+#######################################################
+
+****SVFG Statistics****
+
+************************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+TotalTime           0
+ConnDirEdgeTime     0
+ConnIndEdgeTime     0
+TLNodeTime          0
+ATNodeTime          0
+OptTime             0
+AvgWeight           1
+PHI                 0
+Addr                341
+Copy                48
+Gep                 152
+Load                163
+Store               92
+TotalNode           1281
+FormalIn            106
+FormalOut           102
+FormalParam         23
+FormalRet           1
+ActualIn            33
+ActualOut           25
+ActualParam         147
+ActualRet           6
+TotalEdge           1217
+DirectEdge          741
+IndirectEdge        476
+IndirectEdgeLabels  476
+IndCallEdge         8
+IndRetEdge          0
+DirectCallEdge      47
+DirectRetEdge       0
+AvgInDegree         0
+AvgOutDegree        0
+MaxInDegree         37
+MaxOutDegree        23
+AvgIndInDeg         1
+AvgIndOutDeg        1
+MaxIndInDeg         3
+MaxIndOutDeg        8
+MSSAPhi             41
+#######################################################
+
+*********CallGraph Stats***************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+FIObjNum            7
+FSObjNum            293
+TotalNode           130
+TotalEdge           264
+TotalCycle          0
+MaxNodeInCycle      0
+NodeInCycle         0
+CalRetPairInCycle   0
+#######################################################
+
+*********General Stats***************
+################ (program : juliet-example.bc)###############
+BBWith2Succ         106
+BBWith3Succ         6
+TotalPointers       2332
+TotalObjects        300
+TotalFieldObjects   17
+MaxStructSize       9
+TotalSVFStmts       1720
+TotalPTASVFStmts    843
+FIObjNum            7
+FSObjNum            292
+AddrsNum            370
+LoadsNum            334
+StoresNum           232
+CopysNum            80
+GepsNum             152
+CallsNum            61
+ReturnsNum          20
+FunctionObjs        130
+GlobalObjs          14
+HeapObjs            27
+StackObjs           127
+VarStructObj        5
+VarArrayObj         2
+ConstStructObj      0
+ConstArrayObj       0
+NonPtrObj           216
+ConstantObj         0
+IndCallSites        1
+TotalCallSite       264
+-------------------------------------------------------
+LLVMIRTime          0.006
+SymbolTableTime     0.004
+SVFIRTime           0.006
+#######################################################
+
+****Flow-Sensitive Pointer Analysis Statistics****
+
+************************
+################ (program : juliet-example.bc)###############
+-------------------------------------------------------
+TotalTime           0.014
+SolveTime           0.001
+SCCTime             0
+ProcessTime         0
+PropagationTime     0
+DirectPropaTime     0
+IndirectPropaTime   0
+Strong/WeakUpdTime  0
+AddrTime            0
+CopyTime            0
+LoadTime            0
+UpdateCGTime        0
+PhiTime             0
+AvgPtsSize          0.947887
+AvgTopLvlPtsSize    0.947887
+AvgAddrTakenVarPts  0.659091
+AvgINPtsSize        0
+AvgOUTPtsSize       0
+AverageSCCSize      0
+StoreTime           0
+GepTime             0
+TotalPointers       2332
+Pointers            2329
+TotalObjects        317
+StoresNum           92
+CopysNum            48
+MemObjects          300
+DummyFieldPtrs      3
+FieldObjs           17
+SolveIterations     1
+IndEdgeSolved       0
+NullPointer         3
+PointsToConstPtr    0
+PointsToBlkPtr      5
+StrongUpdates       85
+FI_SNodesHaveIN     0
+FI_SNodesHaveOUT    0
+FO_SNodesHaveIN     0
+FO_SNodesHaveOUT    0
+AI_SNodesHaveIN     0
+AI_SNodesHaveOUT    0
+AO_SNodesHaveIN     0
+AO_SNodesHaveOUT    0
+LD_SNodesHaveIN     0
+SNodesHaveIN        0
+LD_SNodesHaveOUT    0
+SNodesHaveOUT       0
+ST_SNodesHaveIN     0
+ST_SNodesHaveOUT    0
+PHI_SNodesHaveIN    0
+PHI_SNodesHaveOUT   0
+PotentialVarHaveIN  0
+VarHaveIN           0
+PotentialVarHaveOUT 0
+VarHaveOUT          0
+VarHaveEmptyIN      0
+VarHaveEmptyOUT     0
+VarHaveIN_FI        0
+VarHaveOUT_FI       0
+VarHaveIN_FO        0
+VarHaveOUT_FO       0
+VarHaveIN_AI        0
+VarHaveOUT_AI       0
+VarHaveIN_AO        0
+VarHaveOUT_AO       0
+VarHaveIN_LD        0
+VarHaveOUT_LD       0
+VarHaveIN_ST        0
+VarHaveOUT_ST       0
+VarHaveIN_PHI       0
+VarHaveOUT_PHI      0
+MaxPtsSize          3
+MaxTopLvlPtsSize    3
+MaxINPtsSize        0
+MaxOUTPtsSize       0
+NumOfAddrTakenVar   88
+MaxAddrTakenVarPts  3
+ProcessedAddr       341
+ProcessedCopy       48
+ProcessedGep        152
+ProcessedLoad       163
+ProcessedStore      92
+ProcessedPhi        0
+ProcessedAParam     0
+ProcessedFRet       0
+ProcessedMSSANode   307
+NumOfNodesInSCC     0
+MaxSCCSize          1
+NumOfSCC            0
+LocalVarInRecur     0
+#######################################################
+
+****Persistent Points-To Cache Statistics: flow-sensitive analysis bitvector****
+################ (program : juliet-example.bc)###############
+UniquePointsToSets       323
+TotalUnions              983
+PropertyUnions           934
+UniqueUnions             5
+LookupUnions             34
+PreemptiveUnions         10
+TotalComplements         0
+PropertyComplements      0
+UniqueComplements        0
+LookupComplements        0
+PreemptiveComplements    0
+TotalIntersections       0
+PropertyIntersections    0
+UniqueIntersections      0
+LookupIntersections      0
+PreemptiveIntersections  0
+#######################################################
+Done
+Building PTACG... Done
+Building ICFG... Done
+Dumping CSV files:
+Dumping Neo4J nodes...
+Dumping Neo4J edges...
+Done
+Creating csv folder at /project/svf.
+Copying CSV files to /project/svf
+Successfully exported grahps to project/svf.

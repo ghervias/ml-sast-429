@@ -1,0 +1,2 @@
+file, source, format, nodes, relationships, properties, time, rows, batchSize, batches, done, data
+"/var/lib/neo4j/export/query_results.json", "statement: cols(2)", "json", 68604, 67288, 703301, 2642, 137208, -1, 0, TRUE, NULL
