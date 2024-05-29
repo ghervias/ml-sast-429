@@ -19,10 +19,6 @@ from mlsast.util.helpers import (retrieve_source_location,
 from .analysisstep import AnalysisStep
 from .basestep import requires_steps, step
 
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Input
 
 class distance(AnalysisStep):
     """Implementation of the centroid based distance analysis.
@@ -53,9 +49,6 @@ class distance(AnalysisStep):
         """
         conf = self.project.config
 
-        file = open('output.txt', 'a')
-    
-
         # load paths from juliet test set
         paths = self._load_paths_from_model()
 
@@ -70,41 +63,6 @@ class distance(AnalysisStep):
         train_size = 0.5
         sampled_paths = self._sample_paths(embedded_paths, train_size)
 
-
-
-
-
-        nn_paths = embedded_paths
-        nn_paths['label'] = nn_paths['safe'].astype(int)
-        # print("____", file=file)
-        # print("nn_path entry 1", file=file)
-        # print(nn_paths.iloc[0], file=file)
-
-        features = nn_paths['embed'].to_numpy()
-        labels = nn_paths['label'].to_numpy()
-
-        # print("nn_1 features", file=file)
-        # print(features.iloc[0], file=file)
-        # print("nn_1 label", file=file)
-        # print(labels.iloc[0], file=file)
-        
-        X_train, X_test, y_train, y_test = train_test_split(
-            np.array([np.array(x) for x in features]), labels, train_size=train_size, random_state=42)
-        print(type(X_train[0]), file=file) 
-
-        model = Sequential([
-            Input(shape=(76,)),
-            Dense(128, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(1, activation='sigmoid')
-        ])
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-        model.fit(X_train, y_train, epochs=10, batch_size=128)
-        scores = model.evaluate(X_test, y_test)
-        print(f"Model Accuracy: {scores[1]*100:.2f}%", file=file)
-        file.close()
-        
-        ###clustering code that is just running for the sake of running..
         train_good_paths = sampled_paths[0]
         train_bad_paths = sampled_paths[1]
         test_good_paths = sampled_paths[2]
