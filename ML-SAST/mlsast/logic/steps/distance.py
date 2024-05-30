@@ -21,8 +21,9 @@ from .basestep import requires_steps, step
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import SimpleRNN, Dense
 from tensorflow.keras.layers import Input
+from sklearn.metrics import accuracy_score
 
 class distance(AnalysisStep):
     """Implementation of the centroid based distance analysis.
@@ -88,22 +89,38 @@ class distance(AnalysisStep):
         # print("nn_1 label", file=file)
         # print(labels.iloc[0], file=file)
         
-        X_train, X_test, y_train, y_test = train_test_split(
-            np.array([np.array(x) for x in features]), labels, train_size=train_size, random_state=42)
-        print(type(X_train[0]), file=file) 
+        X_train_val, X_test, y_train_val, y_test = train_test_split(
+            np.array([np.array(x) for x in features]), labels, test_size=.2, random_state=42)
+        
+        X_train, X_val, y_train, Y_val = train_test_split(
+            X_train_val, y_train_val, test_size=0.25, random_state=42)
+        print("training rows: ", len(X_train) + len(y_train), file=file)
+        print("testing rows: ", len(X_test) + len(y_test), file=file)
+        print("validation rows: ", len(X_val) + len(Y_val), file=file)
+        value_counts = nn_paths['safe'].value_counts()
+        print(f"true: {value_counts.get(True, 0)}", file=file)
+        print(f"false: {value_counts.get(False, 0)}", file=file)
+        
+
+
+        # print(type(X_train[0]), file=file) 
 
         model = Sequential([
-            Input(shape=(76,)),
-            Dense(128, activation='relu'),
+            Input(shape=(76,1)),
+            SimpleRNN(128, activation='tanh'),
             Dense(64, activation='relu'),
             Dense(1, activation='sigmoid')
         ])
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy', 'precision', 'recall'])
         model.fit(X_train, y_train, epochs=10, batch_size=128)
         scores = model.evaluate(X_test, y_test)
-        print(f"Model Accuracy: {scores[1]*100:.2f}%", file=file)
-        file.close()
+        print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
+
+
         
+
+
+
         ###clustering code that is just running for the sake of running..
         train_good_paths = sampled_paths[0]
         train_bad_paths = sampled_paths[1]
@@ -129,13 +146,30 @@ class distance(AnalysisStep):
             centroids,
             comparison
         )
+        #########
+
+
+
+
 
         # get paths to be analyzed
         paths_to_analyze = self._get_paths_to_analyze()
 
         # embed paths to be analyzed
         paths_to_analyze = self._embed_paths(paths_to_analyze)
+        print(paths_to_analyze.columns, file=file)
 
+        # features_to_analyze = np.array([np.array(x) for x in paths_to_analyze['embed']])
+        predictions = model.predict(X_val)
+        predicted_labels = (predictions > 0.5).astype(int)
+
+        # actual_labels = paths_to_analyze['safe'].astype(int).values
+        accuracy = accuracy_score(Y_val, predicted_labels)
+        print("Model Accuracy: ", accuracy, file=file)
+        file.close()
+
+
+        #### more clustering code
         # compute minimal distance between centroids and data to test
         paths_to_analyze = self.distance_to_centroids(
             paths_to_analyze,
