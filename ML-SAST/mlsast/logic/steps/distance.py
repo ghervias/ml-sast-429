@@ -21,9 +21,10 @@ from .basestep import requires_steps, step
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense
-from tensorflow.keras.layers import Input
-from sklearn.metrics import accuracy_score
+from tensorflow.keras.layers import SimpleRNN, Dense, Input, Dropout
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.optimizers import Adam
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 class distance(AnalysisStep):
     """Implementation of the centroid based distance analysis.
@@ -55,6 +56,7 @@ class distance(AnalysisStep):
         conf = self.project.config
 
         file = open('output.txt', 'a')
+        print("___________", file=file)
     
 
         # load paths from juliet test set
@@ -76,43 +78,45 @@ class distance(AnalysisStep):
 
 
         nn_paths = embedded_paths
-        nn_paths['label'] = nn_paths['safe'].astype(int)
-        # print("____", file=file)
-        # print("nn_path entry 1", file=file)
-        # print(nn_paths.iloc[0], file=file)
+        # nn_paths['label'] = nn_paths['safe'].astype(int)
+        nn_paths['category_label'] = pd.Categorical(nn_paths['cwe']).codes
 
         features = nn_paths['embed'].to_numpy()
-        labels = nn_paths['label'].to_numpy()
+        # labels = nn_paths['label'].to_numpy()
+        labels = to_categorical(nn_paths['category_label'])
+        cwes = nn_paths['cwe'].to_numpy()
+        num_labels = nn_paths['cwe'].nunique()
 
-        # print("nn_1 features", file=file)
-        # print(features.iloc[0], file=file)
-        # print("nn_1 label", file=file)
-        # print(labels.iloc[0], file=file)
         
-        X_train_val, X_test, y_train_val, y_test = train_test_split(
-            np.array([np.array(x) for x in features]), labels, test_size=.2, random_state=42)
+        X_train_val, X_test, y_train_val, y_test, cwe_train_val, cwe_test = train_test_split(
+            np.array([np.array(x) for x in features]), labels, cwes, test_size=.2, random_state=42)
         
-        X_train, X_val, y_train, Y_val = train_test_split(
-            X_train_val, y_train_val, test_size=0.25, random_state=42)
-        print("training rows: ", len(X_train) + len(y_train), file=file)
-        print("testing rows: ", len(X_test) + len(y_test), file=file)
+        X_train, X_val, y_train, Y_val, cwe_train, cwe_val = train_test_split(
+            X_train_val, y_train_val, cwe_train_val, test_size=0.25, random_state=42)
+        # print("training rows: ", len(X_train) + len(y_train), file=file)
+        # print("testing rows: ", len(X_test) + len(y_test), file=file)
         print("validation rows: ", len(X_val) + len(Y_val), file=file)
-        value_counts = nn_paths['safe'].value_counts()
-        print(f"true: {value_counts.get(True, 0)}", file=file)
-        print(f"false: {value_counts.get(False, 0)}", file=file)
+        # value_counts = nn_paths['safe'].value_counts()
+        # print(f"true: {value_counts.get(True, 0)}", file=file)
+        # print(f"false: {value_counts.get(False, 0)}", file=file)
+        cwe_types = nn_paths['cwe'].value_counts()
+        print(cwe_types[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
         
 
 
         # print(type(X_train[0]), file=file) 
 
         model = Sequential([
-            Input(shape=(76,1)),
-            SimpleRNN(128, activation='tanh'),
+            Input(shape=(76,)),
+            Dense(128, activation='relu'),
+            Dropout(0.3),
+            Dense(128, activation='relu'),
             Dense(64, activation='relu'),
-            Dense(1, activation='sigmoid')
+            Dense(64, activation='relu'),
+            Dense(num_labels, activation='softmax')
         ])
-        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy', 'precision', 'recall'])
-        model.fit(X_train, y_train, epochs=10, batch_size=128)
+        model.compile(optimizer=Adam(learning_rate=.001), loss='binary_crossentropy', metrics=['accuracy', 'precision', 'recall'])
+        model.fit(X_train, y_train, epochs=100, batch_size=64)
         scores = model.evaluate(X_test, y_test)
         print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
 
@@ -157,14 +161,40 @@ class distance(AnalysisStep):
 
         # embed paths to be analyzed
         paths_to_analyze = self._embed_paths(paths_to_analyze)
-        print(paths_to_analyze.columns, file=file)
 
-        # features_to_analyze = np.array([np.array(x) for x in paths_to_analyze['embed']])
         predictions = model.predict(X_val)
-        predicted_labels = (predictions > 0.5).astype(int)
+        # predicted_labels = (predictions > 0.5).astype(int)
+        predicted_labels = np.argmax(predictions, axis=1)
 
-        # actual_labels = paths_to_analyze['safe'].astype(int).values
-        accuracy = accuracy_score(Y_val, predicted_labels)
+        print(Y_val, file=file)
+        print(predicted_labels, file=file)
+        accuracy = accuracy_score(np.argmax(Y_val, axis=1) , predicted_labels)
+
+        results_df = pd.DataFrame({
+            'cwe': cwe_val,
+            'actual': np.argmax(Y_val, axis=1),
+            'predicted': predicted_labels
+        })
+
+        # accuracy_per_cwe = results_df.groupby('cwe').apply(
+        #     lambda df: accuracy_score(df['actual'], df['predicted'])
+        # )
+
+        def calculate_metrics(df):
+            precision = precision_score(df['actual'], df['predicted'], average='weighted')
+            recall = recall_score(df['actual'], df['predicted'], average='weighted')
+            f1 = f1_score(df['actual'], df['predicted'], average='weighted')            
+            accuracy = accuracy_score(df['actual'], df['predicted'])
+            return pd.Series({'precision': precision, 'recall': recall, 'f1': f1, 'accuracy': accuracy})
+
+        metrics_per_cwe = results_df.groupby('cwe').apply(calculate_metrics) 
+
+        print("Accuracy per CWE category:", file=file)
+        # print(accuracy_per_cwe, file=file)
+        # print(type(accuracy_per_cwe), file=file)
+        # print(accuracy_per_cwe[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
+        print(metrics_per_cwe.filter(items=[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690], axis=0), file=file)
+
         print("Model Accuracy: ", accuracy, file=file)
         file.close()
 
