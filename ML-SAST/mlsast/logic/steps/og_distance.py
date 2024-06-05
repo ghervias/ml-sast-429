@@ -19,13 +19,6 @@ from mlsast.util.helpers import (retrieve_source_location,
 from .analysisstep import AnalysisStep
 from .basestep import requires_steps, step
 
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense, Input, Dropout, Embedding
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.optimizers import Adam
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import StratifiedShuffleSplit
 
 class distance(AnalysisStep):
     """Implementation of the centroid based distance analysis.
@@ -56,10 +49,6 @@ class distance(AnalysisStep):
         """
         conf = self.project.config
 
-        file = open('output.txt', 'a')
-        print("___________", file=file)
-    
-
         # load paths from juliet test set
         paths = self._load_paths_from_model()
 
@@ -74,84 +63,6 @@ class distance(AnalysisStep):
         train_size = 0.5
         sampled_paths = self._sample_paths(embedded_paths, train_size)
 
-
-
-
-
-        nn_paths = embedded_paths
-        # nn_paths['label'] = nn_paths['safe'].astype(int)
-        nn_paths['category_label'] = pd.Categorical(nn_paths['cwe']).codes
-
-        features = nn_paths['embed'].to_numpy()
-        # labels = nn_paths['label'].to_numpy()
-        labels = to_categorical(nn_paths['category_label'])
-        cwes = nn_paths['cwe'].to_numpy()
-        num_labels = nn_paths['cwe'].nunique()
-
-        
-        # X_train_val, X_test, y_train_val, y_test, cwe_train_val, cwe_test = train_test_split(
-        #     np.array([np.array(x) for x in features]), labels, cwes, test_size=.2, random_state=42)
-        
-        # X_train, X_val, y_train, Y_val, cwe_train, cwe_val = train_test_split(
-        #     X_train_val, y_train_val, cwe_train_val, test_size=0.25, random_state=42)
-
-        sss1 = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-        for train_val_index, test_index in sss1.split(features, cwes):
-            X_train_val, X_test = features[train_val_index], features[test_index]
-            y_train_val, y_test = labels[train_val_index], labels[test_index]
-            cwe_train_val, cwe_test = cwes[train_val_index], cwes[test_index]
-
-        sss2 = StratifiedShuffleSplit(n_splits=1, test_size=0.25, random_state=42)
-        for train_index, val_index in sss2.split(X_train_val, cwe_train_val):
-            X_train, X_val = X_train_val[train_index], X_train_val[val_index]
-            y_train, Y_val = y_train_val[train_index], y_train_val[val_index]
-            cwe_train, cwe_val = cwe_train_val[train_index], cwe_train_val[val_index]
-        
-        print("types: ", file=file)
-        X_train = np.array([np.array(x) for x in X_train])
-        X_test = np.array([np.array(x) for x in X_test])
-        X_val = np.array([np.array(x) for x in X_val])
-        print(X_train[0], file=file)
-        print(y_train[0], file=file)
-
-
-
-        # print("training rows: ", len(X_train) + len(y_train), file=file)
-        # print("testing rows: ", len(X_test) + len(y_test), file=file)
-        print("validation rows: ", len(X_val) + len(Y_val), file=file)
-        # value_counts = nn_paths['safe'].value_counts()
-        # print(f"true: {value_counts.get(True, 0)}", file=file)
-        # print(f"false: {value_counts.get(False, 0)}", file=file)
-        cwe_types = nn_paths['cwe'].value_counts()
-        print(cwe_types[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
-        
-
-
-        # print(type(X_train[0]), file=file) 
-
-        model = Sequential([
-            Input(shape=(76,)),
-            # Embedding(input_dim=76, output_dim=num_labels),
-            # SimpleRNN(64, activation='relu')
-            Dense(128, activation='relu'),
-            Dropout(0.3),
-            Dense(128, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(num_labels, activation='softmax')
-        ])
-        print(model.summary(), file=file)
-        model.compile(optimizer=Adam(learning_rate=.001), loss='binary_crossentropy', metrics=['accuracy', 'precision', 'recall'])
-        model.fit(X_train, y_train, epochs=100, batch_size=64)
-        scores = model.evaluate(X_test, y_test)
-        print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
-
-
-        
-
-
-
-        ###clustering code that is just running for the sake of running..
         train_good_paths = sampled_paths[0]
         train_bad_paths = sampled_paths[1]
         test_good_paths = sampled_paths[2]
@@ -176,11 +87,6 @@ class distance(AnalysisStep):
             centroids,
             comparison
         )
-        #########
-
-
-
-
 
         # get paths to be analyzed
         paths_to_analyze = self._get_paths_to_analyze()
@@ -188,53 +94,6 @@ class distance(AnalysisStep):
         # embed paths to be analyzed
         paths_to_analyze = self._embed_paths(paths_to_analyze)
 
-        predictions = model.predict(X_val)
-        # predicted_labels = (predictions > 0.5).astype(int)
-        predicted_labels = np.argmax(predictions, axis=1)
-
-        print(Y_val, file=file)
-        print(predicted_labels, file=file)
-        accuracy = accuracy_score(np.argmax(Y_val, axis=1) , predicted_labels)
-
-        results_df = pd.DataFrame({
-            'cwe': cwe_val,
-            'actual': np.argmax(Y_val, axis=1),
-            'predicted': predicted_labels
-        })
-
-        # accuracy_per_cwe = results_df.groupby('cwe').apply(
-        #     lambda df: accuracy_score(df['actual'], df['predicted'])
-        # )
-
-        def debug_predictions(df):
-            print("Unique actual classes:", np.unique(df['actual'], return_counts=True), file=file)
-            print("Unique predicted classes:", np.unique(df['predicted'], return_counts=True), file=file)
-
-        debug_predictions(results_df)
-
-
-        def calculate_metrics(df):
-            precision = precision_score(df['actual'], df['predicted'], average='micro')
-            recall = recall_score(df['actual'], df['predicted'], average='weighted')
-            f1 = f1_score(df['actual'], df['predicted'], average='weighted')            
-            accuracy = accuracy_score(df['actual'], df['predicted'])
-            return pd.Series({'precision': precision, 'recall': recall, 'f1': f1, 'accuracy': accuracy})
-
-        metrics_per_cwe = results_df.groupby('cwe').apply(calculate_metrics) 
-
-        print("Accuracy per CWE category:", file=file)
-        # print(accuracy_per_cwe, file=file)
-        # print(type(accuracy_per_cwe), file=file)
-        # print(accuracy_per_cwe[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
-        print(metrics_per_cwe, file=file)
-        # print(metrics_per_cwe.filter(items=[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690], axis=0), file=file)
-
-        print("Model Accuracy: ", accuracy, file=file)
-        metrics_per_cwe.to_csv('dense_nn_results.csv')
-        file.close()
-
-
-        #### more clustering code
         # compute minimal distance between centroids and data to test
         paths_to_analyze = self.distance_to_centroids(
             paths_to_analyze,

@@ -10,8 +10,10 @@ import pandas as pd
 # noinspection PyUnresolvedReferences
 import swifter
 from pandas import DataFrame, Series
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 from mlsast.logic import Project
 from mlsast.util.helpers import (retrieve_source_location,
@@ -19,15 +21,8 @@ from mlsast.util.helpers import (retrieve_source_location,
 from .analysisstep import AnalysisStep
 from .basestep import requires_steps, step
 
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense, Input, Dropout, Embedding
-from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.optimizers import Adam
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import StratifiedShuffleSplit
 
-class distance(AnalysisStep):
+class dbscan(AnalysisStep):
     """Implementation of the centroid based distance analysis.
 
     Args:
@@ -55,10 +50,8 @@ class distance(AnalysisStep):
         paths from a software project to centroids initialized on known defects.
         """
         conf = self.project.config
-
-        file = open('output.txt', 'a')
-        print("___________", file=file)
-    
+        file = open('db_scan_output.txt', 'a')
+        print("___________________", file=file)
 
         # load paths from juliet test set
         paths = self._load_paths_from_model()
@@ -74,93 +67,55 @@ class distance(AnalysisStep):
         train_size = 0.5
         sampled_paths = self._sample_paths(embedded_paths, train_size)
 
-
-
-
-
-        nn_paths = embedded_paths
-        # nn_paths['label'] = nn_paths['safe'].astype(int)
-        nn_paths['category_label'] = pd.Categorical(nn_paths['cwe']).codes
-
-        features = nn_paths['embed'].to_numpy()
-        # labels = nn_paths['label'].to_numpy()
-        labels = to_categorical(nn_paths['category_label'])
-        cwes = nn_paths['cwe'].to_numpy()
-        num_labels = nn_paths['cwe'].nunique()
-
-        
-        # X_train_val, X_test, y_train_val, y_test, cwe_train_val, cwe_test = train_test_split(
-        #     np.array([np.array(x) for x in features]), labels, cwes, test_size=.2, random_state=42)
-        
-        # X_train, X_val, y_train, Y_val, cwe_train, cwe_val = train_test_split(
-        #     X_train_val, y_train_val, cwe_train_val, test_size=0.25, random_state=42)
-
-        sss1 = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-        for train_val_index, test_index in sss1.split(features, cwes):
-            X_train_val, X_test = features[train_val_index], features[test_index]
-            y_train_val, y_test = labels[train_val_index], labels[test_index]
-            cwe_train_val, cwe_test = cwes[train_val_index], cwes[test_index]
-
-        sss2 = StratifiedShuffleSplit(n_splits=1, test_size=0.25, random_state=42)
-        for train_index, val_index in sss2.split(X_train_val, cwe_train_val):
-            X_train, X_val = X_train_val[train_index], X_train_val[val_index]
-            y_train, Y_val = y_train_val[train_index], y_train_val[val_index]
-            cwe_train, cwe_val = cwe_train_val[train_index], cwe_train_val[val_index]
-        
-        print("types: ", file=file)
-        X_train = np.array([np.array(x) for x in X_train])
-        X_test = np.array([np.array(x) for x in X_test])
-        X_val = np.array([np.array(x) for x in X_val])
-        print(X_train[0], file=file)
-        print(y_train[0], file=file)
-
-
-
-        # print("training rows: ", len(X_train) + len(y_train), file=file)
-        # print("testing rows: ", len(X_test) + len(y_test), file=file)
-        print("validation rows: ", len(X_val) + len(Y_val), file=file)
-        # value_counts = nn_paths['safe'].value_counts()
-        # print(f"true: {value_counts.get(True, 0)}", file=file)
-        # print(f"false: {value_counts.get(False, 0)}", file=file)
-        cwe_types = nn_paths['cwe'].value_counts()
-        print(cwe_types[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
-        
-
-
-        # print(type(X_train[0]), file=file) 
-
-        model = Sequential([
-            Input(shape=(76,)),
-            # Embedding(input_dim=76, output_dim=num_labels),
-            # SimpleRNN(64, activation='relu')
-            Dense(128, activation='relu'),
-            Dropout(0.3),
-            Dense(128, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(num_labels, activation='softmax')
-        ])
-        print(model.summary(), file=file)
-        model.compile(optimizer=Adam(learning_rate=.001), loss='binary_crossentropy', metrics=['accuracy', 'precision', 'recall'])
-        model.fit(X_train, y_train, epochs=100, batch_size=64)
-        scores = model.evaluate(X_test, y_test)
-        print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
-
-
-        
-
-
-
-        ###clustering code that is just running for the sake of running..
         train_good_paths = sampled_paths[0]
         train_bad_paths = sampled_paths[1]
         test_good_paths = sampled_paths[2]
         test_bad_paths = sampled_paths[3]
 
+        # print("embedded_paths df: ", file=file)
+        # print(embedded_paths, file=file)
+        # print("embedded_paths embed column: ", file=file)
+        # print(embedded_paths['embed'], file=file)
+        # print("embedded_paths embed column type: ", file=file)
+        # print(type(embedded_paths['embed']), file=file)
+        print("embedded_paths['embed'][0] type: ", file=file)
+        print(type(embedded_paths['embed'][0]), file=file)
+
+        train_list = np.array(embedded_paths['embed'].tolist())
+        print(train_list, file=file)
+        print(len(train_list[0]), file=file)
+
+        db_default = DBSCAN(eps=10, min_samples=150).fit(train_list)
+        labels = db_default.labels_
+        print("labels: ", labels.tolist(), file=file)
+
+
+        # pca = PCA(n_components=2)
+        # X_pca = pca.fit_transform(train_list)
+
+        # unique_labels = set(labels)
+
+        # colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(unique_labels))]
+
+        # for k, col in zip(unique_labels, colors):
+        #     if k ==-1:
+        #         col = [0, 0, 0, 1]
+        #     class_member_mask = (labels == k)
+
+        #     xy = X_pca[class_member_mask]
+        #     plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
+        #              markeredgecolor='k', markersize=14)
+
+        # plt.title('DBSCAN Clustering')
+        # plt.show()
+
+
+        #############
+
         combined_test_paths = test_good_paths.append(test_bad_paths)
 
         # on which paths should the centroids be formed
-        initialize_centroids_on_paths_of_type = conf.find("distance.centroids")
+        initialize_centroids_on_paths_of_type = conf.find("dbscan.centroids")
 
         if initialize_centroids_on_paths_of_type == "bad":
             centroids = self._get_centroids(train_bad_paths)
@@ -176,11 +131,6 @@ class distance(AnalysisStep):
             centroids,
             comparison
         )
-        #########
-
-
-
-
 
         # get paths to be analyzed
         paths_to_analyze = self._get_paths_to_analyze()
@@ -188,53 +138,6 @@ class distance(AnalysisStep):
         # embed paths to be analyzed
         paths_to_analyze = self._embed_paths(paths_to_analyze)
 
-        predictions = model.predict(X_val)
-        # predicted_labels = (predictions > 0.5).astype(int)
-        predicted_labels = np.argmax(predictions, axis=1)
-
-        print(Y_val, file=file)
-        print(predicted_labels, file=file)
-        accuracy = accuracy_score(np.argmax(Y_val, axis=1) , predicted_labels)
-
-        results_df = pd.DataFrame({
-            'cwe': cwe_val,
-            'actual': np.argmax(Y_val, axis=1),
-            'predicted': predicted_labels
-        })
-
-        # accuracy_per_cwe = results_df.groupby('cwe').apply(
-        #     lambda df: accuracy_score(df['actual'], df['predicted'])
-        # )
-
-        def debug_predictions(df):
-            print("Unique actual classes:", np.unique(df['actual'], return_counts=True), file=file)
-            print("Unique predicted classes:", np.unique(df['predicted'], return_counts=True), file=file)
-
-        debug_predictions(results_df)
-
-
-        def calculate_metrics(df):
-            precision = precision_score(df['actual'], df['predicted'], average='micro')
-            recall = recall_score(df['actual'], df['predicted'], average='weighted')
-            f1 = f1_score(df['actual'], df['predicted'], average='weighted')            
-            accuracy = accuracy_score(df['actual'], df['predicted'])
-            return pd.Series({'precision': precision, 'recall': recall, 'f1': f1, 'accuracy': accuracy})
-
-        metrics_per_cwe = results_df.groupby('cwe').apply(calculate_metrics) 
-
-        print("Accuracy per CWE category:", file=file)
-        # print(accuracy_per_cwe, file=file)
-        # print(type(accuracy_per_cwe), file=file)
-        # print(accuracy_per_cwe[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
-        print(metrics_per_cwe, file=file)
-        # print(metrics_per_cwe.filter(items=[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690], axis=0), file=file)
-
-        print("Model Accuracy: ", accuracy, file=file)
-        metrics_per_cwe.to_csv('dense_nn_results.csv')
-        file.close()
-
-
-        #### more clustering code
         # compute minimal distance between centroids and data to test
         paths_to_analyze = self.distance_to_centroids(
             paths_to_analyze,
@@ -272,7 +175,7 @@ class distance(AnalysisStep):
 
         conf = self.project.config
         parent_path = self.project.module_root.parent
-        model_path = conf.find("distance.model_path", abort=True,
+        model_path = conf.find("dbscan.model_path", abort=True,
                                level="CRITICAL")
         extraction_path = parent_path / Path(dirname(model_path)) / "models.csv"
 
@@ -300,9 +203,9 @@ class distance(AnalysisStep):
 
         conf = self.project.config
 
-        include_models = conf.find("distance.include_models", level="DEBUG",
+        include_models = conf.find("dbscan.include_models", level="DEBUG",
                                    abort=False)
-        exclude_models = conf.find("distance.exclude_models", level="DEBUG",
+        exclude_models = conf.find("dbscan.exclude_models", level="DEBUG",
                                    abort=False)
 
         if include_models is None and exclude_models is None:
@@ -363,7 +266,7 @@ class distance(AnalysisStep):
 
         copied_paths = paths.copy()
         conf = self.project.config
-        node_property_to_embed = conf.find("distance.node_property", abort=False, level="INFO")
+        node_property_to_embed = conf.find("dbscan.node_property", abort=False, level="INFO")
         copied_paths["embed"] = _apply_sequence(copied_paths["path"], node_property_to_embed)
         copied_paths["embed"] = _apply_padding(copied_paths["embed"], -1)
         copied_paths["embed"] = _apply_normalize(copied_paths["embed"])
@@ -406,13 +309,13 @@ class distance(AnalysisStep):
         conf = self.project.config
 
         clustering_type = conf.find(
-            "distance.clustering_type",
+            "dbscan.clustering_type",
             abort=True,
             level="CRITICAL"
         )
 
         expected_clusters = conf.find(
-            "distance.expected_clusters",
+            "dbscan.expected_clusters",
             abort=True,
             level="CRITICAL"
         )
@@ -709,8 +612,8 @@ class distance(AnalysisStep):
             values to display the results with the custom frontend.
         """
         conf = self.project.config
-        code_delta = conf.find("distance.source_code_delta")
-        scaling_factor = conf.find("distance.threshold_scaling")
+        code_delta = conf.find("dbscan.source_code_delta")
+        scaling_factor = conf.find("dbscan.threshold_scaling")
 
         thresholds["scaled_threshold"] = \
             thresholds["optimal_threshold"] * scaling_factor
@@ -1048,7 +951,7 @@ class distance(AnalysisStep):
         lines_with_filenames = pd.DataFrame.from_dict(
             {"line": merged_lines, "file": [path["filenames"][0]] * len(merged_lines)})
         conf = self.project.config
-        delta = conf.find("distance.source_code_delta")
+        delta = conf.find("dbscan.source_code_delta")
         source_code, line_dict, highlighted_lines, filenames = \
             self._extract_source_code(lines_with_filenames, delta)
         merged_path.update(
