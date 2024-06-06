@@ -20,8 +20,8 @@ from .analysisstep import AnalysisStep
 from .basestep import requires_steps, step
 
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import SimpleRNN, Dense, Input, Dropout, Embedding
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import SimpleRNN, Dense, Input, Dropout, Embedding, Flatten
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -80,6 +80,7 @@ class distance(AnalysisStep):
 
         nn_paths = embedded_paths
         # nn_paths['label'] = nn_paths['safe'].astype(int)
+        safety_labels = nn_paths['safe'].astype(int).to_numpy()
         nn_paths['category_label'] = pd.Categorical(nn_paths['cwe']).codes
 
         features = nn_paths['embed'].to_numpy()
@@ -89,62 +90,101 @@ class distance(AnalysisStep):
         num_labels = nn_paths['cwe'].nunique()
 
         
-        # X_train_val, X_test, y_train_val, y_test, cwe_train_val, cwe_test = train_test_split(
-        #     np.array([np.array(x) for x in features]), labels, cwes, test_size=.2, random_state=42)
-        
-        # X_train, X_val, y_train, Y_val, cwe_train, cwe_val = train_test_split(
-        #     X_train_val, y_train_val, cwe_train_val, test_size=0.25, random_state=42)
 
         sss1 = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
         for train_val_index, test_index in sss1.split(features, cwes):
             X_train_val, X_test = features[train_val_index], features[test_index]
-            y_train_val, y_test = labels[train_val_index], labels[test_index]
+            y_train_val, y_test = safety_labels[train_val_index], safety_labels[test_index]
+            labels_train_val, labels_test = labels[train_val_index], labels[test_index]
             cwe_train_val, cwe_test = cwes[train_val_index], cwes[test_index]
 
         sss2 = StratifiedShuffleSplit(n_splits=1, test_size=0.25, random_state=42)
         for train_index, val_index in sss2.split(X_train_val, cwe_train_val):
             X_train, X_val = X_train_val[train_index], X_train_val[val_index]
             y_train, Y_val = y_train_val[train_index], y_train_val[val_index]
+            labels_train, labels_val = labels_train_val[train_index], labels_train_val[val_index]
             cwe_train, cwe_val = cwe_train_val[train_index], cwe_train_val[val_index]
         
-        print("types: ", file=file)
+        # print("what is x_val, y_val??", file=file)
+        # print(X_val, file=file)
+        # print(Y_val, file=file)
+        # print("types: ", file=file)
         X_train = np.array([np.array(x) for x in X_train])
         X_test = np.array([np.array(x) for x in X_test])
         X_val = np.array([np.array(x) for x in X_val])
-        print(X_train[0], file=file)
-        print(y_train[0], file=file)
+        # print(X_train[0], file=file)
+        # print(y_train[0], file=file)
 
 
 
-        # print("training rows: ", len(X_train) + len(y_train), file=file)
-        # print("testing rows: ", len(X_test) + len(y_test), file=file)
+        print("________")
+        print("training rows: ", len(X_train) + len(y_train), file=file)
+        print("testing rows: ", len(X_test) + len(y_test), file=file)
         print("validation rows: ", len(X_val) + len(Y_val), file=file)
-        # value_counts = nn_paths['safe'].value_counts()
-        # print(f"true: {value_counts.get(True, 0)}", file=file)
-        # print(f"false: {value_counts.get(False, 0)}", file=file)
+        print("________")
+        value_counts = nn_paths['safe'].value_counts()
+        print(f"true: {value_counts.get(True, 0)}", file=file)
+        print(f"false: {value_counts.get(False, 0)}", file=file)
+        print("________")
+        print("total counts")
         cwe_types = nn_paths['cwe'].value_counts()
         print(cwe_types[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
+        print("________", file=file)
+        print("What is cwe_test, train, val??", file=file)
+        print(cwe_test, file=file)
+        print(cwe_train, file=file)
+        print(cwe_val, file=file)
+        print("________", file=file)
+        unique_train, counts_train = np.unique(cwe_train, return_counts=True)
+        unique_test, counts_test = np.unique(cwe_test, return_counts=True)
+        unique_val, counts_val = np.unique(cwe_val, return_counts=True)
+        print(np.asarray((unique_train, counts_train)).T, file=file)
+        print(np.asarray((unique_test, counts_test)).T, file=file)
+        print(np.asarray((unique_val, counts_val)).T, file=file)
+
+
+        # cwe_count_val = pd.concat([])
         
 
 
         # print(type(X_train[0]), file=file) 
 
-        model = Sequential([
-            Input(shape=(76,)),
-            # Embedding(input_dim=76, output_dim=num_labels),
-            # SimpleRNN(64, activation='relu')
-            Dense(128, activation='relu'),
-            Dropout(0.3),
-            Dense(128, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(64, activation='relu'),
-            Dense(num_labels, activation='softmax')
-        ])
+        # model = Sequential([
+        #     Input(shape=(76, 1)),
+        #     # Embedding(input_dim=76, output_dim=num_labels),
+        #     SimpleRNN(64, activation='relu', return_sequences=True),
+        #     Dense(128, activation='relu'),
+        #     Dropout(0.3),
+        #     Flatten(),
+        #     # Dense(128, activation='relu'),
+        #     # Dense(64, activation='relu'),
+        #     Dense(64, activation='relu'),
+        #     Dense(num_labels, activation='softmax')
+        # ])
+
+        input_layer = Input(shape=(76, 1))
+        x = SimpleRNN(64, activation='relu', return_sequences=True)(input_layer)
+        x = Dense(128, activation='relu')(x)
+        x = Dropout(0.3)(x)
+        x = Flatten()(x)
+        x = Dense(64, activation='relu')(x)
+
+        binary_output = Dense(1, activation='sigmoid', name='binary_output')(x)
+        cwe_output = Dense(num_labels, activation='softmax', name='cwe_output')(x)
+        model = Model(inputs=input_layer, outputs=[binary_output, cwe_output])
+        model.compile(optimizer=Adam(learning_rate=.001), 
+                        loss={'binary_output': 'binary_crossentropy', 'cwe_output': 'categorical_crossentropy'},
+                        metrics={'binary_output': ['accuracy', 'precision', 'recall'], 'cwe_output': ['accuracy', 'precision', 'recall']})
         print(model.summary(), file=file)
-        model.compile(optimizer=Adam(learning_rate=.001), loss='binary_crossentropy', metrics=['accuracy', 'precision', 'recall'])
-        model.fit(X_train, y_train, epochs=100, batch_size=64)
-        scores = model.evaluate(X_test, y_test)
-        print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
+        # model.fit(X_train, y_train, epochs=25, batch_size=64)
+        model.fit(X_train, {'binary_output': y_train, 'cwe_output': labels_train},
+                  validation_data=(X_val, {'binary_output': Y_val, 'cwe_output': labels_val}),
+                  epochs=10, batch_size=64)
+        scores = model.evaluate(X_test, {'binary_output': y_test, 'cwe_output': labels_test})
+        # print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
+        print("SCORES", file=file)
+        print(scores, file=file)
+        print("______", file=file)
 
 
         
@@ -189,48 +229,170 @@ class distance(AnalysisStep):
         paths_to_analyze = self._embed_paths(paths_to_analyze)
 
         predictions = model.predict(X_val)
+        binary_predictions = predictions[0]
+        cwe_predictions = predictions[1]
         # predicted_labels = (predictions > 0.5).astype(int)
-        predicted_labels = np.argmax(predictions, axis=1)
+        binary_predicted_labels = (binary_predictions > 0.5).astype(int)
+        cwe_predicted_labels = np.argmax(cwe_predictions, axis=1)
 
+        binary_accuracy = accuracy_score(Y_val, binary_predicted_labels)
+        binary_precision = precision_score(Y_val, binary_predicted_labels)
+        binary_recall = recall_score(Y_val, binary_predicted_labels)
+        binary_f1 = f1_score(Y_val, binary_predicted_labels)
+        print(f"Binary Classification - Accuracy: {binary_accuracy:.4f}, Precision: {binary_precision:.4f}, Recall: {binary_recall:.4f}, F1 Score: {binary_f1:.4f}", file=file)
+
+        # Calculate accuracy, precision, recall, and F1 for the multi-class output
+        cwe_accuracy = accuracy_score(np.argmax(labels_val, axis=1), cwe_predicted_labels)
+        cwe_precision = precision_score(np.argmax(labels_val, axis=1), cwe_predicted_labels, average='macro')
+        cwe_recall = recall_score(np.argmax(labels_val, axis=1), cwe_predicted_labels, average='macro')
+        cwe_f1 = f1_score(np.argmax(labels_val, axis=1), cwe_predicted_labels, average='macro')
+
+        print(f"Multi-Class Classification - Accuracy: {cwe_accuracy:.4f}, Precision: {cwe_precision:.4f}, Recall: {cwe_recall:.4f}, F1 Score: {cwe_f1:.4f}", file=file)
+
+        # Create a DataFrame to display the actual and predicted labels for both outputs
+        print("checking if flat", file=file)
+        print(cwe_val, file=file)
+        print(type(cwe_val), file=file)
         print(Y_val, file=file)
-        print(predicted_labels, file=file)
-        accuracy = accuracy_score(np.argmax(Y_val, axis=1) , predicted_labels)
-
+        print(type(Y_val), file=file)
+        print(binary_predicted_labels, file=file)
+        print(type(binary_predicted_labels), file=file)
+        print(np.argmax(labels_val, axis=1), file=file)
+        print(type(np.argmax(labels_val, axis=1)), file=file)
+        print(cwe_predicted_labels,file=file)
+        print(type(cwe_predicted_labels), file=file)
         results_df = pd.DataFrame({
             'cwe': cwe_val,
-            'actual': np.argmax(Y_val, axis=1),
-            'predicted': predicted_labels
+            'actual_safe': Y_val,
+            'predicted_safe': binary_predicted_labels.flatten(),
+            'actual_cwe': np.argmax(labels_val, axis=1),
+            'predicted_cwe': cwe_predicted_labels
         })
+
+        # Display the results DataFrame
+        print("RESULTS DF", file=file)
+        print(results_df, file=file)
+
+        # # Binary classification metrics
+        # binary_accuracy = accuracy_score(results_df['actual_safe'], results_df['predicted_safe'])
+        # binary_precision = precision_score(results_df['actual_safe'], results_df['predicted_safe'])
+        # binary_recall = recall_score(results_df['actual_safe'], results_df['predicted_safe'])
+        # binary_f1 = f1_score(results_df['actual_safe'], results_df['predicted_safe'])
+
+        # print(f"Binary Classification - Accuracy: {binary_accuracy:.2f}, Precision: {binary_precision:.2f}, Recall: {binary_recall:.2f}, F1 Score: {binary_f1:.2f}")
+
+        # # Multi-class classification metrics
+        # cwe_accuracy = accuracy_score(results_df['actual_cwe'], results_df['predicted_cwe'])
+        # cwe_precision = precision_score(results_df['actual_cwe'], results_df['predicted_cwe'], average='weighted')
+        # cwe_recall = recall_score(results_df['actual_cwe'], results_df['predicted_cwe'], average='weighted')
+        # cwe_f1 = f1_score(results_df['actual_cwe'], results_df['predicted_cwe'], average='weighted')
+
+        # print(f"Multi-Class Classification - Accuracy: {cwe_accuracy:.2f}, Precision: {cwe_precision:.2f}, Recall: {cwe_recall:.2f}, F1 Score: {cwe_f1:.2f}")
+
+        # Detailed metrics for each class
+        cwe_precision_per_class = precision_score(results_df['actual_cwe'], results_df['predicted_cwe'], average=None)
+        cwe_recall_per_class = recall_score(results_df['actual_cwe'], results_df['predicted_cwe'], average=None)
+        cwe_f1_per_class = f1_score(results_df['actual_cwe'], results_df['predicted_cwe'], average=None)
+
+        # Create a DataFrame to display detailed metrics per class
+        detailed_metrics_df = pd.DataFrame({
+            'cwe': range(num_labels),
+            'precision': cwe_precision_per_class,
+            'recall': cwe_recall_per_class,
+            'f1_score': cwe_f1_per_class
+        })
+
+        # Display the detailed metrics DataFrame
+        print("PER CLASS METRICS", file=file)
+        print(detailed_metrics_df, file=file)
+        detailed_metrics_df.to_csv('RNN_per_class_metrics.csv')
+
+        # print(Y_val, file=file)
+        # print(predicted_labels, file=file)
+        # accuracy = accuracy_score(np.argmax(Y_val, axis=1) , predicted_labels)
+
+        # results_df = pd.DataFrame({
+        #     'cwe': cwe_val,
+        #     'actual': np.argmax(Y_val, axis=1),
+        #     'predicted': predicted_labels
+        # })
+
+        # print("____________", file=file)
+        # print("RESULTS DF", file=file)
+        # print(results_df, file=file)
 
         # accuracy_per_cwe = results_df.groupby('cwe').apply(
         #     lambda df: accuracy_score(df['actual'], df['predicted'])
         # )
 
-        def debug_predictions(df):
-            print("Unique actual classes:", np.unique(df['actual'], return_counts=True), file=file)
-            print("Unique predicted classes:", np.unique(df['predicted'], return_counts=True), file=file)
+        # def debug_predictions(df):
+        #     print("Unique actual classes:", np.unique(df['actual'], return_counts=True), file=file)
+        #     print("Unique predicted classes:", np.unique(df['predicted'], return_counts=True), file=file)
 
-        debug_predictions(results_df)
+        # debug_predictions(results_df)
 
 
-        def calculate_metrics(df):
-            precision = precision_score(df['actual'], df['predicted'], average='micro')
-            recall = recall_score(df['actual'], df['predicted'], average='weighted')
-            f1 = f1_score(df['actual'], df['predicted'], average='weighted')            
-            accuracy = accuracy_score(df['actual'], df['predicted'])
-            return pd.Series({'precision': precision, 'recall': recall, 'f1': f1, 'accuracy': accuracy})
+        # def calculate_metrics(df):
+        #     precision = precision_score(df['actual'], df['predicted'], average='macro')
+        #     recall = recall_score(df['actual'], df['predicted'], average='macro')
+        #     f1 = f1_score(df['actual'], df['predicted'], average='macro')            
+        #     accuracy = accuracy_score(df['actual'], df['predicted'])
+        #     return pd.Series({'precision': precision, 'recall': recall, 'f1': f1, 'accuracy': accuracy})
 
-        metrics_per_cwe = results_df.groupby('cwe').apply(calculate_metrics) 
+        # metrics_per_cwe = results_df.groupby('cwe').apply(calculate_metrics) 
 
-        print("Accuracy per CWE category:", file=file)
-        # print(accuracy_per_cwe, file=file)
-        # print(type(accuracy_per_cwe), file=file)
-        # print(accuracy_per_cwe[[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690]], file=file)
-        print(metrics_per_cwe, file=file)
-        # print(metrics_per_cwe.filter(items=[78, 121, 122, 126, 134, 190, 191, 194, 195, 197, 369, 400, 401, 690], axis=0), file=file)
+        # print("Accuracy per CWE category:", file=file)
+        # print(metrics_per_cwe, file=file)
 
-        print("Model Accuracy: ", accuracy, file=file)
-        metrics_per_cwe.to_csv('dense_nn_results.csv')
+        # def calculate_metrics_by_hand(df):
+        #     classes = df['cwe'].unique()
+        #     metrics = {
+        #         'precision': [],
+        #         'recall': [],
+        #         'f1': []
+        #     }
+        #     print("CLASSES", file=file)
+        #     print(classes, file=file)
+        #     check = 0
+        #     for cls in classes:
+        #         df_cls = df[df['cwe'] == cls]
+                
+
+        #         tp = len(df_cls[(df_cls['actual'] == cls) & (df_cls['predicted'] == cls)])
+        #         fp = len(df_cls[(df_cls['actual'] != cls) & (df_cls['predicted'] == cls)])
+        #         fn = len(df_cls[(df_cls['actual'] == cls) & (df_cls['predicted'] != cls)])
+
+        #         precision = tp / (tp + fp) if tp + fp > 0 else 0
+        #         recall = tp / (tp + fn) if tp + fn > 0 else 0
+        #         f1 = 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0
+        #         if (check == 0):
+        #             print("HERE",file=file)
+        #             print(df_cls, file=file)
+        #             print("TP, FP, FN", file=file)
+        #             print(tp, file=file)
+        #             print(fp, file=file)
+        #             print(fn, file=file)
+        #             print("PRECISION, RECALL, F1", file=file)
+        #             print(precision, file=file)
+        #             print(recall, file=file)
+        #             print(f1, file=file)
+        #             check = 1
+
+
+        #         metrics['precision'].append(precision)
+        #         metrics['recall'].append(recall)
+        #         metrics['f1'].append(f1)
+
+        #     metrics_df = pd.DataFrame(metrics, index=classes)
+
+        #     return metrics_df
+        
+        # metrics_per_class = calculate_metrics_by_hand(results_df)
+        # print(metrics_per_class, file=file)
+
+
+        # print("Model Accuracy: ", accuracy, file=file)
+        # metrics_per_cwe.to_csv('rnn_results.csv')
         file.close()
 
 
