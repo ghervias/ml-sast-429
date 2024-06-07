@@ -24,8 +24,13 @@ from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import SimpleRNN, Dense, Input, Dropout, Embedding, Flatten
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc
 from sklearn.model_selection import StratifiedShuffleSplit
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 class distance(AnalysisStep):
     """Implementation of the centroid based distance analysis.
@@ -68,6 +73,10 @@ class distance(AnalysisStep):
 
         # embed paths from juliet test set
         embedded_paths = self._embed_paths(paths)
+        print(embedded_paths['cwe'].nunique(), file=file)
+        desired_cwes = [36, 78, 121, 122, 124, 126, 127, 134, 190, 191, 194, 195, 197, 369, 400, 401, 415, 590, 690, 789]
+        embedded_paths = embedded_paths[embedded_paths['cwe'].isin(desired_cwes)]
+        print(embedded_paths['cwe'].nunique(), file=file)
 
         # sample paths into train and test set to obtain optimal thresholds on
         # ground truth
@@ -138,9 +147,9 @@ class distance(AnalysisStep):
         unique_train, counts_train = np.unique(cwe_train, return_counts=True)
         unique_test, counts_test = np.unique(cwe_test, return_counts=True)
         unique_val, counts_val = np.unique(cwe_val, return_counts=True)
-        print(np.asarray((unique_train, counts_train)).T, file=file)
-        print(np.asarray((unique_test, counts_test)).T, file=file)
-        print(np.asarray((unique_val, counts_val)).T, file=file)
+        # print(np.asarray((unique_train, counts_train)).T, file=file)
+        # print(np.asarray((unique_test, counts_test)).T, file=file)
+        # print(np.asarray((unique_val, counts_val)).T, file=file)
 
 
         # cwe_count_val = pd.concat([])
@@ -178,9 +187,9 @@ class distance(AnalysisStep):
                         metrics={'binary_output': ['accuracy', 'precision', 'recall'], 'cwe_output': ['accuracy', 'precision', 'recall']})
         print(model.summary(), file=file)
         # model.fit(X_train, y_train, epochs=25, batch_size=64)
-        model.fit(X_train, {'binary_output': y_train, 'cwe_output': labels_train},
+        history = model.fit(X_train, {'binary_output': y_train, 'cwe_output': labels_train},
                   validation_data=(X_val, {'binary_output': Y_val, 'cwe_output': labels_val}),
-                  epochs=5, batch_size=64)
+                  epochs=100, batch_size=64)
         scores = model.evaluate(X_test, {'binary_output': y_test, 'cwe_output': labels_test})
         # print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
         print("SCORES", file=file)
@@ -274,20 +283,26 @@ class distance(AnalysisStep):
         print("RESULTS DF", file=file)
         print(results_df, file=file)
 
+
+        # # filter the dataframe to include only the desired cwes
+        # filtered_results_df = results_df[results_df['cwe'].isin(desired_cwes)]
+        filtered_results_df = results_df
+        print(filtered_results_df, file=file)
+
         # # Multi-class classification metrics
 
         # Detailed metrics for each class
         per_class_accuracy = []
-        unique_classes = results_df['actual_cwe'].unique()
+        unique_classes = filtered_results_df['cwe'].unique()
 
         for cls in unique_classes:
-            cls_indices = results_df[results_df['actual_cwe'] == cls].index
-            cls_accuracy = accuracy_score(results_df.loc[cls_indices, 'actual_cwe'], results_df.loc[cls_indices, 'predicted_cwe'])
+            cls_indices = filtered_results_df[filtered_results_df['cwe'] == cls].index
+            cls_accuracy = accuracy_score(filtered_results_df.loc[cls_indices, 'actual_cwe'], filtered_results_df.loc[cls_indices, 'predicted_cwe'])
             per_class_accuracy.append(cls_accuracy)
 
-        cwe_precision_per_class = precision_score(results_df['actual_cwe'], results_df['predicted_cwe'], average=None)
-        cwe_recall_per_class = recall_score(results_df['actual_cwe'], results_df['predicted_cwe'], average=None)
-        cwe_f1_per_class = f1_score(results_df['actual_cwe'], results_df['predicted_cwe'], average=None)
+        cwe_precision_per_class = precision_score(filtered_results_df['actual_cwe'], filtered_results_df['predicted_cwe'], average=None)
+        cwe_recall_per_class = recall_score(filtered_results_df['actual_cwe'], filtered_results_df['predicted_cwe'], average=None)
+        cwe_f1_per_class = f1_score(filtered_results_df['actual_cwe'], filtered_results_df['predicted_cwe'], average=None)
 
         # Create a DataFrame to display detailed metrics per class
         detailed_metrics_df = pd.DataFrame({
@@ -299,11 +314,52 @@ class distance(AnalysisStep):
 
         })
 
+        detailed_metrics_df = detailed_metrics_df.sort_values(by='cwe')
+
         # Display the detailed metrics DataFrame
         print("PER CLASS METRICS", file=file)
         print(detailed_metrics_df, file=file)
-        detailed_metrics_df.to_csv('RNN_per_class_metrics.csv')
+        detailed_metrics_df.to_csv('RNN_per_class_metrics_100epoch.csv')
         file.close()
+
+        # Plot recall for binary classification and save as PNG
+        plt.figure(figsize=(10, 6))
+        plt.plot(history.history['binary_output_recall'], label='Training Recall')
+        plt.plot(history.history['val_binary_output_recall'], label='Validation Recall')
+        plt.xlabel('Epochs')
+        plt.ylabel('Recall')
+        plt.title('Recall over Epochs for Binary Classification')
+        plt.legend()
+        plt.savefig('binary_classification_recall_100epoch.png')  # Save the plot as a PNG file
+        plt.close()  # Close the plot to free up memory
+
+        # Plot recall for multi-class classification (CWE) and save as PNG
+        plt.figure(figsize=(10, 6))
+        plt.plot(history.history['cwe_output_recall'], label='Training Recall')
+        plt.plot(history.history['val_cwe_output_recall'], label='Validation Recall')
+        plt.xlabel('Epochs')
+        plt.ylabel('Recall')
+        plt.title('Recall over Epochs for Multi-Class Classification (CWE)')
+        plt.legend()
+        plt.savefig('multi_class_classification_recall_100epoch.png')  # Save the plot as a PNG file
+        plt.close()  # Close the plot to free up memory
+
+        # Compute ROC curve and AUC for binary classification
+        fpr, tpr, _ = roc_curve(Y_val, predictions[0])
+        roc_auc = auc(fpr, tpr)
+
+        # Plot ROC curve
+        plt.figure(figsize=(10, 6))
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic for Binary Classification')
+        plt.legend(loc="lower right")
+        plt.savefig('binary_classification_roc_100epoch.png')
+        plt.close()
 
 
         #### more clustering code
