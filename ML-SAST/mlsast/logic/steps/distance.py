@@ -172,7 +172,7 @@ class distance(AnalysisStep):
         # ])
 
         input_layer = Input(shape=(76, 1))
-        x = SimpleRNN(64, activation='relu', return_sequences=True)(input_layer)
+        x = SimpleRNN(76, activation='relu', return_sequences=True)(input_layer)
         # x = Dense(128, activation='relu')(input_layer)
         x = Dense(128, activation='relu')(x)
         x = Dropout(0.3)(x)
@@ -189,7 +189,7 @@ class distance(AnalysisStep):
         # model.fit(X_train, y_train, epochs=25, batch_size=64)
         history = model.fit(X_train, {'binary_output': y_train, 'cwe_output': labels_train},
                   validation_data=(X_val, {'binary_output': Y_val, 'cwe_output': labels_val}),
-                  epochs=100, batch_size=64)
+                  epochs=25, batch_size=64)
         scores = model.evaluate(X_test, {'binary_output': y_test, 'cwe_output': labels_test})
         # print(f"Model Training Accuracy: {scores[1]*100:.2f}%", file=file)
         print("SCORES", file=file)
@@ -319,7 +319,7 @@ class distance(AnalysisStep):
         # Display the detailed metrics DataFrame
         print("PER CLASS METRICS", file=file)
         print(detailed_metrics_df, file=file)
-        detailed_metrics_df.to_csv('RNN_per_class_metrics_100epoch.csv')
+        detailed_metrics_df.to_csv('RNN_per_class_metrics.csv')
         file.close()
 
         # Plot recall for binary classification and save as PNG
@@ -330,7 +330,7 @@ class distance(AnalysisStep):
         plt.ylabel('Recall')
         plt.title('Recall over Epochs for Binary Classification')
         plt.legend()
-        plt.savefig('binary_classification_recall_100epoch.png')  # Save the plot as a PNG file
+        plt.savefig('binary_classification_recall.png')  # Save the plot as a PNG file
         plt.close()  # Close the plot to free up memory
 
         # Plot recall for multi-class classification (CWE) and save as PNG
@@ -341,7 +341,7 @@ class distance(AnalysisStep):
         plt.ylabel('Recall')
         plt.title('Recall over Epochs for Multi-Class Classification (CWE)')
         plt.legend()
-        plt.savefig('multi_class_classification_recall_100epoch.png')  # Save the plot as a PNG file
+        plt.savefig('multi_class_classification_recall.png')  # Save the plot as a PNG file
         plt.close()  # Close the plot to free up memory
 
         # Compute ROC curve and AUC for binary classification
@@ -358,7 +358,7 @@ class distance(AnalysisStep):
         plt.ylabel('True Positive Rate')
         plt.title('Receiver Operating Characteristic for Binary Classification')
         plt.legend(loc="lower right")
-        plt.savefig('binary_classification_roc_100epoch.png')
+        plt.savefig('binary_classification_roc.png')
         plt.close()
 
 
